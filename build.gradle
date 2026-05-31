@@ -1,0 +1,62 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '4.0.6'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'lan.citadel'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	// Device discovery
+	implementation 'org.jupnp:org.jupnp:2.7.1'
+
+	// jUPnP's default transport is implemented against Jetty 9.4 (the last
+	// javax.servlet-based line; jUPnP imports org.eclipse.jetty.* with a
+	// [9.3.14,) lower bound). These are 'provided'/optional in jUPnP's POM, so
+	// they aren't pulled in transitively and must be declared here.
+	//
+	// Versions are pinned explicitly on every artifact on purpose: Spring Boot's
+	// BOM manages org.eclipse.jetty:* to Jetty 12 (incompatible Handler API), and
+	// io.spring.dependency-management would otherwise force 12 onto these and
+	// their transitives (jetty-http/io/util). Explicit versions override the BOM.
+	def jettyVersion = '9.4.57.v20241219'
+	implementation "org.eclipse.jetty:jetty-server:${jettyVersion}"
+	implementation "org.eclipse.jetty:jetty-servlet:${jettyVersion}"
+	implementation "org.eclipse.jetty:jetty-client:${jettyVersion}"
+	implementation "org.eclipse.jetty:jetty-security:${jettyVersion}"
+	implementation "org.eclipse.jetty:jetty-http:${jettyVersion}"
+	implementation "org.eclipse.jetty:jetty-io:${jettyVersion}"
+	implementation "org.eclipse.jetty:jetty-util:${jettyVersion}"
+	implementation "org.eclipse.jetty:jetty-util-ajax:${jettyVersion}"
+	// jUPnP's Jetty transport needs the javax.servlet API at runtime
+	implementation 'javax.servlet:javax.servlet-api:4.0.1'
+
+	// For Samsung control
+	implementation 'org.java-websocket:Java-WebSocket:1.5.4'
+
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+	// mDNS
+	implementation 'org.jmdns:jmdns:3.5.9'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}

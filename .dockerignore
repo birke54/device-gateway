@@ -1,0 +1,24 @@
+# Build output and caches — rebuilt inside the image
+build/
+.gradle/
+
+# IDE / editor
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# VCS and meta
+.git/
+.gitignore
+.gitattributes
+
+# Local Claude/agent state
+.claude/
+
+# Docs and container files not needed in the build context
+HELP.md
+README.md
+Dockerfile
+.dockerignore
+docker-compose.yml

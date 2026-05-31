@@ -1,0 +1,26 @@
+services:
+  device-gateway:
+    build: .
+    image: device-gateway:latest
+    container_name: device-gateway
+    # Host networking is REQUIRED: UPnP/SSDP and mDNS discovery use multicast,
+    # which does not traverse Docker's bridge network. On Unraid this is the
+    # "Host" network type. With host networking the app is reachable on the
+    # NAS's own IP at port 8080.
+    network_mode: host
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      # Tune the JVM if desired, e.g. JAVA_OPTS: "-Xmx256m"
+      JAVA_OPTS: ""
+      # Listen port. Change if 8080 is already in use on the NAS (host networking
+      # means the app binds this port directly on the host).
+      SERVER_PORT: "8080"
+      # Runtime user for the app and owner of /data. Defaults are Unraid's
+      # nobody:users; set these to match whoever owns your appdata folder.
+      PUID: "99"
+      PGID: "100"
+    volumes:
+      # Pairing tokens + log file. On Unraid point this at appdata, e.g.
+      #   /mnt/user/appdata/device-gateway:/data
+      - ./data:/data
+    restart: unless-stopped

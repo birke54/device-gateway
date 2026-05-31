@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: device-gateway
+
+# Listen port. Override with the SERVER_PORT env var (e.g. on Unraid if 8080
+# is already taken on the NAS).
+server:
+  port: ${SERVER_PORT:8080}
+
+logging:
+  level:
+    root: INFO
+
+---
+# Local Development Environment Overrides
+spring:
+  config:
+    activate:
+      on-profile: local
+
+logging:
+  level:
+    lan.citadel.device_gateway: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+---
+# Production Environment Overrides (Docker)
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+# Tokens and logs live under /data, mounted as a volume so they survive
+# container restarts (see Dockerfile / docker-compose.yml).
+device-gateway:
+  token-store:
+    path: /data/tv-tokens.properties
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+
+logging:
+  level:
+    lan.citadel.device_gateway: INFO
+  file:
+    name: /data/device-gateway.log
