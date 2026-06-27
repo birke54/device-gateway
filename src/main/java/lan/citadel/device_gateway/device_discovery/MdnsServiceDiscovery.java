@@ -1,11 +1,11 @@
 package lan.citadel.device_gateway.device_discovery;
 
-import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.jmdns.JmDNS;
@@ -28,11 +28,15 @@ import java.util.Objects;
 public class MdnsServiceDiscovery implements DeviceDiscovery, Closeable {
     private static final Logger logger = LoggerFactory.getLogger(MdnsServiceDiscovery.class);
     private final DeviceRegistry deviceRegistry;
+    private final DeviceNameStore nameStore;
+    @Value("${device-gateway.mdns-device-ttl:86400}")
+    private int DEFAULT_TTL_SECONDS;
 
     private JmDNS jmdns;
 
-    public MdnsServiceDiscovery(DeviceRegistry deviceRegistry, MeterRegistry meterRegistry) {
+    public MdnsServiceDiscovery(DeviceRegistry deviceRegistry, DeviceNameStore nameStore) {
         this.deviceRegistry = deviceRegistry;
+        this.nameStore = nameStore;
     }
 
     @Override
@@ -140,9 +144,9 @@ public class MdnsServiceDiscovery implements DeviceDiscovery, Closeable {
         };
     }
 
-    private Device parseEventInfo(ServiceEvent event) {
+    private @NonNull Device parseEventInfo(@NonNull ServiceEvent event) {
         // The host keys the registry, so a service that resolves without an address is unusable and
-        // is rejected. Manufacturer/type fall back to UNKNOWN so non-Samsung, non-TV devices still
+        // is rejected. Manufacturer/type fall back to UNKNOWN, so non-Samsung, non-TV devices still
         // register instead of throwing out of the listener and being silently dropped.
         ServiceInfo info = event.getInfo();
         String[] hostAddresses = info.getHostAddresses();
@@ -150,27 +154,14 @@ public class MdnsServiceDiscovery implements DeviceDiscovery, Closeable {
             throw new IllegalStateException("mDNS service has no host address");
         }
         String hostName = hostAddresses[0];
-        String deviceName = Objects.requireNonNull(info.getName(), "mDNS service has no name");
-        Manufacturer manufacturer = parseManufacturer(info);
+        String discoveredName = Objects.requireNonNull(info.getName(), "mDNS service has no name");
+        // Apply any manual override before classifying, so a corrected name drives the derived
+        // manufacturer and type as well as the display name.
+        String deviceName = nameStore.resolve(discoveredName);
+        Manufacturer manufacturer = Manufacturer.fromName(deviceName);
 
         int port = info.getPort();
-        int ttl = 3600; // TODO: dynamic TTL
-        return new Device(hostName, deviceName, manufacturer, port, ttl, parseDeviceType(event));
-    }
-
-    private DeviceType parseDeviceType(ServiceEvent event) {
-        String name = event.getName();
-        if (name != null && name.contains("TV")) {
-            return DeviceType.TV;
-        }
-        return DeviceType.UNKNOWN;
-    }
-
-    private Manufacturer parseManufacturer(ServiceInfo info) {
-        String manufacturer = info != null ? info.getPropertyString("manufacturer") : null;
-        if (manufacturer != null && manufacturer.contains("Samsung")) {
-            return Manufacturer.SAMSUNG;
-        }
-        return Manufacturer.UNKNOWN;
+        int ttl = DEFAULT_TTL_SECONDS; // TODO: dynamic TTL
+        return new Device(hostName, deviceName, manufacturer, port, ttl, DeviceType.fromName(deviceName));
     }
 }

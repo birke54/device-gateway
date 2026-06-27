@@ -2,6 +2,20 @@ spring:
   application:
     name: device-gateway
 
+# Tokens and logs live under /data, mounted as a volume so they survive
+# container restarts (see Dockerfile / docker-compose.yml).
+device-gateway:
+  upnp-device-ttl: 1800 # 30 minutes
+  mdns-device-ttl: 86400 # 1 day
+  device-sweeper-interval: 10 # 10 seconds
+  token-store:
+    path: /data/token-store.properties
+  # Discovered device names, one per line, that you can rename by setting a value.
+  device-names:
+    path: /data/device-names.properties
+  adb-cert-store:
+    adb_key_pair_path: /data/.android/adbkey
+
 # Listen port. Override with the SERVER_PORT env var (e.g. on Unraid if 8080
 # is already taken on the NAS).
 server:
@@ -18,6 +32,16 @@ spring:
     activate:
       on-profile: local
 
+# Keep dev state inside the repo (under ./.local-data, gitignored) instead of the
+# container's /data volume, so running locally needs no mounted directory.
+device-gateway:
+  token-store:
+    path: ./.local-data/token-store.properties
+  device-names:
+    path: ./.local-data/device-names.properties
+  adb-cert-store:
+    adb_key_pair_path: ./.local-data/.android/adbkey
+
 logging:
   level:
     lan.citadel.device_gateway: TRACE
@@ -30,12 +54,6 @@ spring:
   config:
     activate:
       on-profile: prod
-
-# Tokens and logs live under /data, mounted as a volume so they survive
-# container restarts (see Dockerfile / docker-compose.yml).
-device-gateway:
-  token-store:
-    path: /data/tv-tokens.properties
 
 management:
   endpoints:

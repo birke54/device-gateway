@@ -7,13 +7,13 @@ import org.jupnp.UpnpServiceImpl;
 import org.jupnp.model.message.header.STAllHeader;
 import org.jupnp.model.meta.DeviceDetails;
 import org.jupnp.model.meta.LocalDevice;
-import org.jupnp.model.meta.ManufacturerDetails;
 import org.jupnp.model.meta.RemoteDevice;
 import org.jupnp.model.meta.RemoteDeviceIdentity;
 import org.jupnp.registry.Registry;
 import org.jupnp.registry.RegistryListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.net.URL;
@@ -23,15 +23,18 @@ import java.util.Objects;
 public class UpnpServiceDiscovery implements DeviceDiscovery {
     private static final Logger logger = LoggerFactory.getLogger(UpnpServiceDiscovery.class);
     /** Fallback expiry when a UPnP advertisement omits CACHE-CONTROL max-age. */
-    private static final int DEFAULT_TTL_SECONDS = 1800;
+    @Value("${device-gateway.upnp-device-ttl:1800}")
+    private int DEFAULT_TTL_SECONDS;
     private final UpnpService upnpService;
     private RegistryListener registryListener;
     private final DeviceRegistry deviceRegistry;
+    private final DeviceNameStore nameStore;
 
-    public UpnpServiceDiscovery(DeviceRegistry deviceRegistry) {
+    public UpnpServiceDiscovery(DeviceRegistry deviceRegistry, DeviceNameStore nameStore) {
         upnpService = new UpnpServiceImpl(new JettyUpnpServiceConfiguration());
         registryListener = configureRegistryListener();
         this.deviceRegistry = deviceRegistry;
+        this.nameStore = nameStore;
     }
 
     @Override
@@ -52,7 +55,7 @@ public class UpnpServiceDiscovery implements DeviceDiscovery {
 
             @Override
             public void remoteDeviceDiscoveryFailed(Registry registry, RemoteDevice device, Exception ex) {
-                logger.debug("Upnp device discovery failed: {} - {}", device.getDisplayString(), ex.getMessage());
+                logger.error("Upnp device discovery failed: {} - {}", device.getDisplayString(), ex.getMessage());
             }
 
             @Override
@@ -62,7 +65,7 @@ public class UpnpServiceDiscovery implements DeviceDiscovery {
                     logger.debug("Upnp device metadata hydrated...adding to registry: {}, {}", parsedDevice.deviceName(), parsedDevice.hostName());
                     deviceRegistry.addDevice(parsedDevice);
                 } catch (RuntimeException e) {
-                    logger.warn("Failed to parse UPnP device {}, skipping: {}", found_device.getDisplayString(), e.toString());
+                    logger.error("Failed to parse UPnP device {}, skipping: {}", found_device.getDisplayString(), e.toString());
                 }
             }
 
@@ -87,13 +90,13 @@ public class UpnpServiceDiscovery implements DeviceDiscovery {
 
             @Override
             public void localDeviceAdded(Registry registry, LocalDevice device) {
-                logger.debug("Local devices not supported: {}", device.getDisplayString());
+                logger.debug("localDeviceAdded not supported: {}", device.getDisplayString());
                 throw new UnsupportedOperationException("Not implemented");
             }
 
             @Override
             public void localDeviceRemoved(Registry registry, LocalDevice device) {
-                logger.debug("Local devices not supported: {}", device.getDisplayString());
+                logger.debug("localDeviceRemoved not supported: {}", device.getDisplayString());
                 throw new UnsupportedOperationException("Not implemented");
             }
 
@@ -121,28 +124,15 @@ public class UpnpServiceDiscovery implements DeviceDiscovery {
 
         DeviceDetails details = device.getDetails();
         String friendlyName = details != null ? details.getFriendlyName() : null;
-        String deviceName = friendlyName != null ? friendlyName : hostName;
-        Manufacturer manufacturer = parseManufacturer(details);
+        String discoveredName = friendlyName != null ? friendlyName : hostName;
+        // Apply any manual override before classifying, so a corrected name drives the derived
+        // manufacturer and type as well as the display name.
+        String deviceName = nameStore.resolve(discoveredName);
+        Manufacturer manufacturer = Manufacturer.fromName(deviceName);
         int port = descriptorUrl.getPort();
         Integer maxAge = connectionInfo.getMaxAgeSeconds();
         int ttl = maxAge != null ? maxAge : DEFAULT_TTL_SECONDS;
-        DeviceType deviceType = parseDeviceType(friendlyName);
+        DeviceType deviceType = DeviceType.fromName(deviceName);
         return new Device(hostName, deviceName, manufacturer, port, ttl, deviceType);
-    }
-
-    private DeviceType parseDeviceType(String friendlyName) {
-        if (friendlyName != null && friendlyName.contains("TV")) {
-            return DeviceType.TV;
-        }
-        return DeviceType.UNKNOWN;
-    }
-
-    private Manufacturer parseManufacturer(DeviceDetails details) {
-        ManufacturerDetails manufacturerDetails = details != null ? details.getManufacturerDetails() : null;
-        String manufacturer = manufacturerDetails != null ? manufacturerDetails.getManufacturer() : null;
-        if (manufacturer != null && manufacturer.contains("Samsung")) {
-            return Manufacturer.SAMSUNG;
-        }
-        return Manufacturer.UNKNOWN;
     }
 }

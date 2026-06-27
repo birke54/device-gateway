@@ -2,8 +2,11 @@ package lan.citadel.device_gateway.device_discovery;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import lan.citadel.device_gateway.exceptions.DeviceNotFoundException;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -16,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class DeviceRegistry {
     /**
-     * Logical devices keyed by host. A physical device (e.g. a Samsung TV) publishes several
+     * Logical devices keyed by host. A physical device (e.g., a Samsung TV) publishes several
      * discovery advertisements — multiple UPnP root devices plus mDNS services — that all share a
      * host; they are merged into a single {@link LogicalDevice} here. The individual advertisements
      * are not retained.
@@ -29,7 +32,8 @@ public class DeviceRegistry {
     private static final Logger logger = LoggerFactory.getLogger(DeviceRegistry.class);
 
     /** How often the sweeper checks for stale entries.*/
-    private static final long SWEEP_INTERVAL_SECONDS = 600;
+    @Value("${device-gateway.device-sweeper-interval:10}")
+    private int SWEEP_INTERVAL_SECONDS;
 
     private ScheduledExecutorService sweeper;
 
@@ -71,10 +75,10 @@ public class DeviceRegistry {
      * Folds one discovery advertisement into the logical device for its host, creating it if absent.
      * Metadata is upgraded monotonically — a known device type and a known manufacturer always win
      * (first known value sticks; {@code UNKNOWN} only fills a gap), and the friendly name is taken
-     * from the highest-scoring advertisement seen so far — so the vaguer advertisements (e.g. an mDNS
+     * from the highest-scoring advertisement seen so far — so the vaguer advertisements (e.g., an mDNS
      * airplay record reporting {@code UNKNOWN}) never degrade an entry.
      */
-    private void mergeIn(Device ad) {
+    private void mergeIn(@NonNull Device ad) {
         deviceRegistry.compute(ad.hostName(), (host, existing) -> {
             long now = System.currentTimeMillis();
             int adScore = representativeScore(ad);
@@ -103,18 +107,21 @@ public class DeviceRegistry {
     }
 
     /** Ranks an advertisement's metadata: a known device type dominates, a known manufacturer breaks ties. */
-    private static int representativeScore(Device ad) {
+    private static int representativeScore(@NonNull Device ad) {
         return (ad.deviceType() != DeviceType.UNKNOWN ? 2 : 0) + (ad.manufacturer() != Manufacturer.UNKNOWN ? 1 : 0);
     }
 
     public LogicalDevice getDevice(String host) {
         Entry entry = deviceRegistry.get(host);
-        return entry != null ? entry.device() : null;
+        if (entry == null) {
+            throw new DeviceNotFoundException(host);
+        }
+        return entry.device();
     }
 
-    public List<LogicalDevice> getDevices(DeviceType type) {
+    public List<LogicalDevice> getDevicesByType(DeviceType type) {
         List<LogicalDevice> devices = new ArrayList<>();
-        deviceRegistry.forEach((host, entry) -> {
+        deviceRegistry.values().forEach(entry -> {
             if (entry.device().deviceType() == type) {
                 devices.add(entry.device());
             }
@@ -123,7 +130,7 @@ public class DeviceRegistry {
     }
 
     public List<LogicalDevice> getTelevisions() {
-        return getDevices(DeviceType.TV);
+        return getDevicesByType(DeviceType.TV);
     }
 
     public void clear() {

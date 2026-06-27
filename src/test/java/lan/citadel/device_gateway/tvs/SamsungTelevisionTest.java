@@ -1,5 +1,6 @@
 package lan.citadel.device_gateway.tvs;
 
+import lan.citadel.device_gateway.TokenStore;
 import lan.citadel.device_gateway.control.RemoteKey;
 import org.junit.jupiter.api.Test;
 
@@ -8,7 +9,7 @@ import static org.mockito.Mockito.mock;
 
 class SamsungTelevisionTest {
 
-    private final SamsungTelevision tv = new SamsungTelevision("10.0.0.5", mock(TokenStore.class));
+    private final SamsungTelevisionRemote tv = new SamsungTelevisionRemote("10.0.0.5", mock(TokenStore.class));
 
     @Test
     void exposesItsHost() {

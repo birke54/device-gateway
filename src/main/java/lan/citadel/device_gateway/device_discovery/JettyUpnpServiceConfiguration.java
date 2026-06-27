@@ -11,7 +11,6 @@ import org.jupnp.transport.spi.StreamClient;
  * then passes that null field into {@code JettyTransportConfiguration
  * .createStreamClient(...)}, which dereferences it and throws an NPE during
  * {@code UpnpService.startup()}.
- *
  * We override {@link #createStreamClient()} to supply a real configuration
  * (Jetty defaults: 10s timeout).
  */

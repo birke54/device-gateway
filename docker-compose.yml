@@ -20,7 +20,6 @@ services:
       PUID: "99"
       PGID: "100"
     volumes:
-      # Pairing tokens + log file. On Unraid point this at appdata, e.g.
-      #   /mnt/user/appdata/device-gateway:/data
-      - ./data:/data
+      # Pairing tokens + log file
+      - /mnt/user/appdata/device-gateway:/data
     restart: unless-stopped

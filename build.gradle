@@ -31,9 +31,15 @@ dependencies {
 	// they aren't pulled in transitively and must be declared here.
 	//
 	// Versions are pinned explicitly on every artifact on purpose: Spring Boot's
-	// BOM manages org.eclipse.jetty:* to Jetty 12 (incompatible Handler API), and
+	// BOM manages org.eclipse.jetty:* to Jetty 12 (jakarta.servlet, incompatible
+	// Handler/HttpClient APIs, and no jetty-servlet artifact), and
 	// io.spring.dependency-management would otherwise force 12 onto these and
 	// their transitives (jetty-http/io/util). Explicit versions override the BOM.
+	//
+	// 9.4.x is required (not just preferred): jUPnP's transport links against
+	// org.eclipse.jetty.client.api.ContentProvider and the javax.servlet-based
+	// jetty-servlet module, both removed in Jetty 10+. 9.4.57 is the final 9.4
+	// release.
 	def jettyVersion = '9.4.57.v20241219'
 	implementation "org.eclipse.jetty:jetty-server:${jettyVersion}"
 	implementation "org.eclipse.jetty:jetty-servlet:${jettyVersion}"
@@ -46,6 +52,9 @@ dependencies {
 	// jUPnP's Jetty transport needs the javax.servlet API at runtime
 	implementation 'javax.servlet:javax.servlet-api:4.0.1'
 
+	// mDNS
+	implementation 'org.jmdns:jmdns:3.5.9'
+
 	// For Samsung control
 	implementation 'org.java-websocket:Java-WebSocket:1.5.4'
 
@@ -53,8 +62,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
-	// mDNS
-	implementation 'org.jmdns:jmdns:3.5.9'
+	// For adb device control (i.e. Firesticks)
+	implementation 'dev.mobile:dadb:1.2.10'
 }
 
 tasks.named('test') {

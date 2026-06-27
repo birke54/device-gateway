@@ -1,6 +1,7 @@
 package lan.citadel.device_gateway;
 
 import lan.citadel.device_gateway.device_discovery.DeviceRegistry;
+import lan.citadel.device_gateway.device_discovery.DeviceType;
 import lan.citadel.device_gateway.device_discovery.LogicalDevice;
 import lan.citadel.device_gateway.control.App;
 import lan.citadel.device_gateway.control.RemoteKey;
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.Set;
 
 @RestController
-@RequestMapping("/api/remote")
+@RequestMapping("/api")
 public class ApiController {
     private static final Logger logger = LoggerFactory.getLogger(ApiController.class);
 
@@ -24,36 +25,41 @@ public class ApiController {
         this.sessionManager = sessionManager;
     }
 
-    @GetMapping("/devices")
-    public List<LogicalDevice> getDevices() {
-        return deviceRegistry.getTelevisions();
+    @GetMapping("/v1/remote/unknowndevices")
+    public List<LogicalDevice> getUnknownDevices() {
+        return deviceRegistry.getDevicesByType(DeviceType.UNKNOWN);
     }
 
-    @PostMapping("/connect/{device_key}")
-    public void connect(@PathVariable("device_key") String deviceKey) {
+    @GetMapping("/v1/remote/tvdevices")
+    public List<LogicalDevice> getTvDevices() {
+        return deviceRegistry.getDevicesByType(DeviceType.TV);
+    }
+
+    @PostMapping("/v1/remote/connect/{tv_device_key}")
+    public void connect(@PathVariable("tv_device_key") String deviceKey) {
         sessionManager.setActiveRemote(deviceKey);
         logger.info("Connecting to device {}", deviceKey);
     }
 
-    @GetMapping("/apps")
-    public List<App> getApps() {
-        return sessionManager.getApps();
+    @GetMapping("/v1/remote/{tv_device_key}/apps")
+    public List<App> getApps(@PathVariable("tv_device_key") String deviceKey) {
+        return sessionManager.getApps(deviceKey);
     }
 
-    @PostMapping("/apps/{app_name}/open")
-    public void openApp(@PathVariable("app_name") String appName) {
-        sessionManager.openApp(appName);
+    @PostMapping("/v1/remote/{tv_device_key}/apps/{app_name}/open")
+    public void openApp(@PathVariable("tv_device_key") String deviceKey, @PathVariable("app_name") String appName) {
+        sessionManager.openApp(deviceKey, appName);
         logger.info("Opening app {}", appName);
     }
 
-    @GetMapping("/keys")
-    public Set<RemoteKey> getSupportedKeys() {
-        return sessionManager.supportedKeys();
+    @GetMapping("/v1/remote/{tv_device_key}/supportedkeys")
+    public Set<RemoteKey> getSupportedKeys(@PathVariable("tv_device_key") String deviceKey) {
+        return sessionManager.supportedKeys(deviceKey);
     }
 
-    @PostMapping("/keys/{key}")
-    public void pressKey(@PathVariable RemoteKey key) {
-        sessionManager.sendKey(key);
+    @PostMapping("/v1/remote/{tv_device_key}/presskey/{key}")
+    public void pressKey(@PathVariable("tv_device_key") String deviceKey, @PathVariable RemoteKey key) {
+        sessionManager.sendKey(deviceKey, key);
         logger.info("Sending key {}", key);
     }
 

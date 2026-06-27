@@ -1,8 +1,10 @@
 package lan.citadel.device_gateway.device_discovery;
 
+import lan.citadel.device_gateway.exceptions.DeviceNotFoundException;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DeviceRegistryTest {
 
@@ -25,8 +27,9 @@ class DeviceRegistryTest {
     }
 
     @Test
-    void getDeviceReturnsNullForUnknownHost() {
-        assertThat(registry.getDevice("192.168.1.1")).isNull();
+    void getDeviceThrowsForUnknownHost() {
+        assertThatThrownBy(() -> registry.getDevice("192.168.1.1"))
+                .isInstanceOf(DeviceNotFoundException.class);
     }
 
     @Test
@@ -84,7 +87,7 @@ class DeviceRegistryTest {
         registry.addDevice(ad("10.0.0.1", "TV One", Manufacturer.SAMSUNG, 1800, DeviceType.TV));
         registry.addDevice(ad("10.0.0.3", "Mystery", Manufacturer.UNKNOWN, 1800, DeviceType.UNKNOWN));
 
-        assertThat(registry.getDevices(DeviceType.UNKNOWN))
+        assertThat(registry.getDevicesByType(DeviceType.UNKNOWN))
                 .extracting(LogicalDevice::host)
                 .containsExactly("10.0.0.3");
     }
@@ -94,7 +97,8 @@ class DeviceRegistryTest {
         registry.addDevice(ad("10.0.0.1", "TV One", Manufacturer.SAMSUNG, 1800, DeviceType.TV));
         registry.clear();
 
-        assertThat(registry.getDevice("10.0.0.1")).isNull();
+        assertThatThrownBy(() -> registry.getDevice("10.0.0.1"))
+                .isInstanceOf(DeviceNotFoundException.class);
         assertThat(registry.getTelevisions()).isEmpty();
     }
 }

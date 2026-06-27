@@ -1,4 +1,4 @@
-package lan.citadel.device_gateway.tvs;
+package lan.citadel.device_gateway;
 
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
@@ -9,8 +9,10 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Map;
 import java.util.Optional;
@@ -22,8 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * token on later connects avoids re-triggering the on-screen Allow/Deny prompt.
  * <p>
  * Tokens are cached in memory and persisted to a properties file so they survive restarts. The
- * location is configurable via {@code device-gateway.token-store.path} and defaults to
- * {@code ~/.device-gateway/tv-tokens.properties}.
+ * location is configurable via {@code device-gateway.token-store.path}.
  */
 @Component
 public class TokenStore {
@@ -33,7 +34,7 @@ public class TokenStore {
     private final Path file;
 
     public TokenStore(
-            @Value("${device-gateway.token-store.path:${user.home}/.device-gateway/tv-tokens.properties}") String path) {
+            @Value("${device-gateway.token-store.path}") String path) {
         this.file = Path.of(path);
     }
 
@@ -64,19 +65,37 @@ public class TokenStore {
     }
 
     private synchronized void persist() {
+        Path parent = file.toAbsolutePath().getParent();
+        Path tmp = null;
         try {
-            Path parent = file.getParent();
-            if (parent != null) {
-                Files.createDirectories(parent);
-            }
+            Files.createDirectories(parent);
             Properties props = new Properties();
             tokensByHost.forEach(props::setProperty);
-            try (OutputStream out = Files.newOutputStream(file)) {
-                props.store(out, "Samsung TV pairing tokens");
+
+            // Write to a sibling temp file first, then atomically swap it into place so a crash
+            // mid-write can never leave the live file truncated or partially written.
+            tmp = Files.createTempFile(parent, ".tv-tokens", ".tmp");
+            try (OutputStream out = Files.newOutputStream(tmp)) {
+                props.store(out, "Device pairing tokens");
             }
-            restrictToOwner(file);
+            restrictToOwner(tmp);
+            try {
+                Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException e) {
+                // Filesystem can't do an atomic rename; fall back to a best-effort replace.
+                Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
+            }
+            tmp = null;
         } catch (IOException e) {
             logger.warn("Failed to persist TV tokens to {}: {}", file, e.toString());
+        } finally {
+            if (tmp != null) {
+                try {
+                    Files.deleteIfExists(tmp);
+                } catch (IOException e) {
+                    logger.warn("Failed to clean up temp token file {}: {}", tmp, e.toString());
+                }
+            }
         }
     }
 

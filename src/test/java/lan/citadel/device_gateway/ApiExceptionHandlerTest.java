@@ -1,6 +1,8 @@
 package lan.citadel.device_gateway;
 
 import lan.citadel.device_gateway.control.RemoteKey;
+import lan.citadel.device_gateway.device_discovery.DeviceType;
+import lan.citadel.device_gateway.device_discovery.LogicalDevice;
 import lan.citadel.device_gateway.device_discovery.Manufacturer;
 import lan.citadel.device_gateway.exceptions.AppLaunchException;
 import lan.citadel.device_gateway.exceptions.DeviceNotFoundException;
@@ -8,6 +10,7 @@ import lan.citadel.device_gateway.exceptions.DeviceNotTelevisionException;
 import lan.citadel.device_gateway.exceptions.NoActiveSessionException;
 import lan.citadel.device_gateway.exceptions.TvConnectionException;
 import lan.citadel.device_gateway.exceptions.UnsupportedKeyException;
+import lan.citadel.device_gateway.exceptions.UnsupportedOperationException;
 import lan.citadel.device_gateway.exceptions.UnsupportedTvException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -32,7 +35,8 @@ class ApiExceptionHandlerTest {
 
     @Test
     void mapsDeviceNotTelevisionToBadRequest() {
-        assertThat(handler.handleNotTelevision(new DeviceNotTelevisionException("10.0.0.5")).getStatusCode())
+        LogicalDevice device = new LogicalDevice("10.0.0.5", "Speaker", Manufacturer.UNKNOWN, DeviceType.UNKNOWN);
+        assertThat(handler.handleNotTelevision(new DeviceNotTelevisionException(device)).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
@@ -44,7 +48,8 @@ class ApiExceptionHandlerTest {
 
     @Test
     void mapsConnectionFailureToBadGateway() {
-        assertThat(handler.handleConnectionFailed(new TvConnectionException("10.0.0.5")).getStatusCode())
+        LogicalDevice device = new LogicalDevice("10.0.0.1", "MyDevice", Manufacturer.SAMSUNG, DeviceType.TV);
+        assertThat(handler.handleConnectionFailed(new TvConnectionException(device)).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_GATEWAY);
     }
 
@@ -58,6 +63,12 @@ class ApiExceptionHandlerTest {
     void mapsUnsupportedKeyToUnprocessableContent() {
         assertThat(handler.handleUnsupportedKey(new UnsupportedKeyException(RemoteKey.POWER)).getStatusCode())
                 .isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
+    }
+
+    @Test
+    void mapsUnsupportedOperationToNotImplemented() {
+        assertThat(handler.handleUnsupportedOperation(new UnsupportedOperationException("dimming")).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_IMPLEMENTED);
     }
 
     @Test

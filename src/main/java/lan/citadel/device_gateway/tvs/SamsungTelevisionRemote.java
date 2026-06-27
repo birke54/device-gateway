@@ -1,9 +1,11 @@
 package lan.citadel.device_gateway.tvs;
 
+import lan.citadel.device_gateway.TokenStore;
 import lan.citadel.device_gateway.control.App;
 import lan.citadel.device_gateway.control.RemoteKey;
 import lan.citadel.device_gateway.exceptions.AppLaunchException;
 import lan.citadel.device_gateway.exceptions.UnsupportedKeyException;
+import org.jspecify.annotations.NonNull;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
@@ -46,8 +48,8 @@ import java.util.concurrent.TimeUnit;
  * {@code ms.channel.connect} event; that token is cached via {@link TokenStore} and replayed on
  * later connects to skip the prompt.
  */
-public class SamsungTelevision implements Television, PersistentConnection {
-    private static final Logger logger = LoggerFactory.getLogger(SamsungTelevision.class);
+public class SamsungTelevisionRemote implements Television, PersistentConnection {
+    private static final Logger logger = LoggerFactory.getLogger(SamsungTelevisionRemote.class);
 
     private static final int SECURE_PORT = 8002;
     /** Plain-HTTP control/info API, used to probe whether a given app is installed. */
@@ -120,7 +122,7 @@ public class SamsungTelevision implements Television, PersistentConnection {
     private volatile List<App> appCache;
     private RemoteSocket socket;
 
-    public SamsungTelevision(String host, TokenStore tokenStore) {
+    public SamsungTelevisionRemote(String host, TokenStore tokenStore) {
         this.host = host;
         this.tokenStore = tokenStore;
     }
@@ -144,7 +146,7 @@ public class SamsungTelevision implements Television, PersistentConnection {
             }
             // The socket is open, but authorization only completes once ms.channel.connect arrives
             // (immediately when a token is known, or after the user accepts the on-screen prompt).
-            if (!newSocket.awaitAuthorization(HANDSHAKE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+            if (!newSocket.awaitAuthorization()) {
                 logger.warn("Samsung TV {} was not authorized within {}s", host, HANDSHAKE_TIMEOUT_SECONDS);
                 return false;
             }
@@ -212,7 +214,7 @@ public class SamsungTelevision implements Television, PersistentConnection {
         CountDownLatch latch = new CountDownLatch(1);
         appsLatch = latch;
         try {
-            emit("ed.installedApp.get", null);
+            emit();
             if (!latch.await(APP_FETCH_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                 logger.warn("Timed out retrieving installed apps from Samsung TV {}", host);
             }
@@ -225,7 +227,7 @@ public class SamsungTelevision implements Television, PersistentConnection {
         return installedApps != null ? installedApps : mapper.createArrayNode();
     }
 
-    private List<App> parseApps(JsonNode apps) {
+    private @NonNull List<App> parseApps(JsonNode apps) {
         List<App> result = new ArrayList<>();
         if (apps != null && apps.isArray()) {
             for (JsonNode app : apps) {
@@ -236,7 +238,7 @@ public class SamsungTelevision implements Television, PersistentConnection {
     }
 
     /** Probes the TV's REST API for each catalogue app ID, keeping those the set reports as installed. */
-    private List<App> probeKnownApps() {
+    private @NonNull List<App> probeKnownApps() {
         List<App> installed = new ArrayList<>();
         for (String appId : KNOWN_APP_IDS) {
             probeApp(appId).ifPresent(installed::add);
@@ -247,7 +249,7 @@ public class SamsungTelevision implements Television, PersistentConnection {
 
     /**
      * Queries {@code http://<host>:8001/api/v2/applications/<appId>}; returns the app iff the TV
-     * recognises it (HTTP 200 with a name). A 404 or any error means "not installed / unavailable".
+     * recognizes it (HTTP 200 with a name). A 404 or any error means "not installed / unavailable".
      */
     private Optional<App> probeApp(String appId) {
         HttpRequest request = HttpRequest.newBuilder(appUri(appId))
@@ -298,7 +300,7 @@ public class SamsungTelevision implements Television, PersistentConnection {
     }
 
     /** REST endpoint for a single app on this TV: {@code http://<host>:8001/api/v2/applications/<appId>}. */
-    private URI appUri(String appId) {
+    private @NonNull URI appUri(String appId) {
         return URI.create("http://" + host + ':' + REST_PORT + "/api/v2/applications/" + appId);
     }
 
@@ -311,13 +313,10 @@ public class SamsungTelevision implements Television, PersistentConnection {
     }
 
     /** Sends a channel event ({@code ms.channel.emit}) with the given event name and optional data. */
-    private void emit(String event, JsonNode data) {
+    private void emit() {
         ObjectNode params = mapper.createObjectNode();
-        params.put("event", event);
+        params.put("event", "ed.installedApp.get");
         params.put("to", "host");
-        if (data != null) {
-            params.set("data", data);
-        }
         send("ms.channel.emit", params);
     }
 
@@ -339,7 +338,7 @@ public class SamsungTelevision implements Television, PersistentConnection {
         return appName;
     }
 
-    private URI buildUri(String token) {
+    private @NonNull URI buildUri(String token) {
         String encodedName = Base64.getEncoder().encodeToString(CONTROLLER_NAME.getBytes(StandardCharsets.UTF_8));
         StringBuilder url = new StringBuilder("wss://").append(host).append(':').append(SECURE_PORT)
                 .append("/api/v2/channels/samsung.remote.control?name=").append(encodedName);
@@ -381,8 +380,8 @@ public class SamsungTelevision implements Television, PersistentConnection {
             super(serverUri);
         }
 
-        boolean awaitAuthorization(long timeout, TimeUnit unit) throws InterruptedException {
-            return authLatch.await(timeout, unit);
+        boolean awaitAuthorization() throws InterruptedException {
+            return authLatch.await(SamsungTelevisionRemote.HANDSHAKE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         }
 
         boolean isAuthorized() {
@@ -400,7 +399,7 @@ public class SamsungTelevision implements Television, PersistentConnection {
          * hostname verification. The trust-all socket factory already covers certificate trust.
          */
         @Override
-        protected void onSetSSLParameters(SSLParameters sslParameters) {
+        protected void onSetSSLParameters(@NonNull SSLParameters sslParameters) {
             sslParameters.setEndpointIdentificationAlgorithm(null);
         }
 
@@ -447,7 +446,7 @@ public class SamsungTelevision implements Television, PersistentConnection {
         }
 
         @Override
-        public void onError(Exception ex) {
+        public void onError(@NonNull Exception ex) {
             logger.warn("WebSocket error for Samsung TV {}: {}", host, ex.toString());
         }
     }
