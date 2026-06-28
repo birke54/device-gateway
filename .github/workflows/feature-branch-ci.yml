@@ -33,7 +33,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build and test
-        run: ./gradlew build -x test
+        run: ./gradlew build -x test -x checkstyleMain -x checkstyleTest
 
   linting:
     runs-on: ubuntu-latest
@@ -92,4 +92,4 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build and test
-        run: ./gradlew build -x test
+        run: ./gradlew test
