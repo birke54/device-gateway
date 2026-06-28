@@ -138,7 +138,8 @@ public class MdnsServiceDiscovery implements DeviceDiscovery, Closeable {
                     deviceRegistry.addDevice(device);
                     logger.debug("mDNS Service resolved: {}, {}", device.deviceName(), device.hostName());
                 } catch (RuntimeException e) {
-                    logger.warn("Failed to parse resolved mDNS service {}, skipping: {}", event.getName(), e.toString());
+                    logger.warn("Failed to parse resolved mDNS service {}, skipping: {}",
+                            event.getName(), e.toString());
                 }
             }
         };

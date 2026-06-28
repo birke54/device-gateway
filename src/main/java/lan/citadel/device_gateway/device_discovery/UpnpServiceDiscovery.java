@@ -62,10 +62,12 @@ public class UpnpServiceDiscovery implements DeviceDiscovery {
             public void remoteDeviceAdded(Registry registry, RemoteDevice found_device) {
                 try {
                     Device parsedDevice = parseDeviceInfo(found_device);
-                    logger.debug("Upnp device metadata hydrated...adding to registry: {}, {}", parsedDevice.deviceName(), parsedDevice.hostName());
+                    logger.debug("Upnp device metadata hydrated...adding to registry: {}, {}",
+                            parsedDevice.deviceName(), parsedDevice.hostName());
                     deviceRegistry.addDevice(parsedDevice);
                 } catch (RuntimeException e) {
-                    logger.error("Failed to parse UPnP device {}, skipping: {}", found_device.getDisplayString(), e.toString());
+                    logger.error("Failed to parse UPnP device {}, skipping: {}",
+                            found_device.getDisplayString(), e.toString());
                 }
             }
 
@@ -73,10 +75,12 @@ public class UpnpServiceDiscovery implements DeviceDiscovery {
             public void remoteDeviceUpdated(Registry registry, RemoteDevice device) {
                 try {
                     Device parsedDevice = parseDeviceInfo(device);
-                    logger.debug("Upnp device metadata hydrated...updating registry: {}, {}", parsedDevice.deviceName(), parsedDevice.hostName());
+                    logger.debug("Upnp device metadata hydrated...updating registry: {}, {}",
+                            parsedDevice.deviceName(), parsedDevice.hostName());
                     deviceRegistry.updateDevice(parsedDevice);
                 } catch (RuntimeException e) {
-                    logger.warn("Failed to parse UPnP device {}, skipping: {}", device.getDisplayString(), e.toString());
+                    logger.warn("Failed to parse UPnP device {}, skipping: {}",
+                            device.getDisplayString(), e.toString());
                 }
             }
 
@@ -119,7 +123,8 @@ public class UpnpServiceDiscovery implements DeviceDiscovery {
         // device that lacks it is unusable and is rejected. Everything else falls back so devices
         // with sparse metadata (routers, NAS boxes, etc.) are still registered.
         RemoteDeviceIdentity connectionInfo = device.getIdentity();
-        URL descriptorUrl = Objects.requireNonNull(connectionInfo.getDescriptorURL(), "UPnP device has no descriptor URL");
+        URL descriptorUrl = Objects.requireNonNull(
+                connectionInfo.getDescriptorURL(), "UPnP device has no descriptor URL");
         String hostName = Objects.requireNonNull(descriptorUrl.getHost(), "UPnP device has no host");
 
         DeviceDetails details = device.getDetails();

@@ -140,8 +140,10 @@ class RemoteSessionManagerTest {
     @Test
     void operationsThrowWhenNoActiveSession() {
         assertThatThrownBy(() -> sessionManager.getApps(HOST)).isInstanceOf(NoActiveSessionException.class);
-        assertThatThrownBy(() -> sessionManager.openApp("HOST", "Netflix")).isInstanceOf(NoActiveSessionException.class);
-        assertThatThrownBy(() -> sessionManager.sendKey("HOST", RemoteKey.POWER)).isInstanceOf(NoActiveSessionException.class);
+        assertThatThrownBy(() -> sessionManager.openApp("HOST", "Netflix"))
+                .isInstanceOf(NoActiveSessionException.class);
+        assertThatThrownBy(() -> sessionManager.sendKey("HOST", RemoteKey.POWER))
+                .isInstanceOf(NoActiveSessionException.class);
         assertThatThrownBy(() -> sessionManager.supportedKeys("HOST")).isInstanceOf(NoActiveSessionException.class);
     }
 
