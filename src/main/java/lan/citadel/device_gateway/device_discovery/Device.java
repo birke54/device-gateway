@@ -12,7 +12,8 @@ public record Device(@NonNull String hostName, @NonNull String deviceName, @NonN
     @Override
     @NonNull
     public String toString() {
-        return "{ " + this.deviceName + ", " + this.manufacturer + ", " + this.hostName + ", " + this.port + ", " + this.deviceType + ", " + this.ttl + " }";
+        return "{ " + this.deviceName + ", " + this.manufacturer + ", " + this.hostName + ", "
+                + this.port + ", " + this.deviceType + ", " + this.ttl + " }";
     }
 }
 

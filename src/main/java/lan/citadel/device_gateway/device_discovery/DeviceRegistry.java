@@ -43,7 +43,7 @@ public class DeviceRegistry {
      * we wait for the slowest re-announcer), and the score of the advertisement whose metadata is
      * currently representative (so a better advertisement can take over the name).
      */
-    private record Entry(LogicalDevice device, long lastSeenMillis, int ttlSeconds, int representativeScore) {}
+    private record Entry(LogicalDevice device, long lastSeenMillis, int ttlSeconds, int representativeScore) { }
 
     @PostConstruct
     public void start() {
