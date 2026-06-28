@@ -42,7 +42,8 @@ class ApiControllerTest {
     @Test
     void getDevicesReturnsTelevisions() throws Exception {
         when(deviceRegistry.getDevicesByType(DeviceType.TV))
-                .thenReturn(List.of(new LogicalDevice("10.0.0.5", "Living Room TV", Manufacturer.SAMSUNG, DeviceType.TV)));
+                .thenReturn(List.of(
+                        new LogicalDevice("10.0.0.5", "Living Room TV", Manufacturer.SAMSUNG, DeviceType.TV)));
 
         mvc.perform(get("/api/v1/remote/tvdevices"))
                 .andExpect(status().isOk())
