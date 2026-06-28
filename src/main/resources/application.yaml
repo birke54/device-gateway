@@ -24,6 +24,8 @@ server:
 logging:
   level:
     root: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
 
 ---
 # Local Development Environment Overrides
@@ -45,8 +47,6 @@ device-gateway:
 logging:
   level:
     lan.citadel.device_gateway: TRACE
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
 
 ---
 # Production Environment Overrides (Docker)

@@ -14,7 +14,7 @@ services:
       JAVA_OPTS: ""
       # Listen port. Change if 8080 is already in use on the NAS (host networking
       # means the app binds this port directly on the host).
-      SERVER_PORT: "8080"
+      SERVER_PORT: "7223"
       # Runtime user for the app and owner of /data. Defaults are Unraid's
       # nobody:users; set these to match whoever owns your appdata folder.
       PUID: "99"
