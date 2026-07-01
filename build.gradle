@@ -68,6 +68,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
+	implementation 'io.micrometer:micrometer-registry-prometheus'
+
 	// For adb device control (i.e. Firesticks)
 	implementation 'dev.mobile:dadb:1.2.10'
 }
