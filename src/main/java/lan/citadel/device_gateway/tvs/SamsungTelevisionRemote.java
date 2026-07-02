@@ -78,7 +78,8 @@ public class SamsungTelevisionRemote implements Television, PersistentConnection
             "3201807016597", // Apple TV
             "3201908019041", // Apple Music
             "3201512006963", // Plex
-            "3201506003488"  // Pandora
+            "3201506003488", // Pandora
+            "111299000288"   // Peacock TV
     );
 
     /** Maps the canonical remote keys this TV supports to Samsung's {@code KEY_*} wire codes. */
@@ -193,52 +194,8 @@ public class SamsungTelevisionRemote implements Television, PersistentConnection
         if (appCache != null) {
             return appCache;
         }
-        List<App> apps = parseApps(fetchInstalledApps());
-        if (apps.isEmpty()) {
-            // Newer Tizen firmware silently ignores ed.installedApp.get, so fall back to probing the
-            // REST API for the curated set of well-known apps.
-            apps = probeKnownApps();
-        }
-        appCache = apps;
-        return apps;
-    }
-
-    /**
-     * Requests the installed-app list and blocks for the TV's async reply. Synchronized and
-     * double-checked so the network round-trip happens at most once; later calls reuse the cache.
-     */
-    private synchronized JsonNode fetchInstalledApps() {
-        if (installedApps != null) {
-            return installedApps;
-        }
-        CountDownLatch latch = new CountDownLatch(1);
-        appsLatch = latch;
-        try {
-            emit();
-            if (!latch.await(APP_FETCH_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                logger.warn("Timed out retrieving installed apps from Samsung TV {}", host);
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            logger.warn("Interrupted while retrieving installed apps from Samsung TV {}", host);
-        } finally {
-            appsLatch = null;
-        }
-        return installedApps != null ? installedApps : mapper.createArrayNode();
-    }
-
-    private @NonNull List<App> parseApps(JsonNode apps) {
-        List<App> result = new ArrayList<>();
-        if (apps != null && apps.isArray()) {
-            for (JsonNode app : apps) {
-                result.add(new App(app.path("appId").asString(""), app.path("name").asString("")));
-            }
-        }
-        return result;
-    }
-
-    /** Probes the TV's REST API for each catalogue app ID, keeping those the set reports as installed. */
-    private @NonNull List<App> probeKnownApps() {
+        // Newer Tizen firmware silently ignores ed.installedApp.get, so fall back to probing the
+        // REST API for the curated set of well-known apps.
         List<App> installed = new ArrayList<>();
         for (String appId : KNOWN_APP_IDS) {
             probeApp(appId).ifPresent(installed::add);
@@ -259,6 +216,8 @@ public class SamsungTelevisionRemote implements Television, PersistentConnection
         try {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
+                logger.debug("REST probe for app {} on Samsung TV {} returned HTTP {}",
+                        appId, host, response.statusCode());
                 return Optional.empty();
             }
             JsonNode body = mapper.readTree(response.body());
@@ -310,14 +269,6 @@ public class SamsungTelevisionRemote implements Television, PersistentConnection
         message.put("method", method);
         message.set("params", params);
         sendRaw(message);
-    }
-
-    /** Sends a channel event ({@code ms.channel.emit}) with the given event name and optional data. */
-    private void emit() {
-        ObjectNode params = mapper.createObjectNode();
-        params.put("event", "ed.installedApp.get");
-        params.put("to", "host");
-        send("ms.channel.emit", params);
     }
 
     private void sendRaw(ObjectNode message) {

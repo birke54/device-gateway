@@ -36,7 +36,7 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(TvConnectionException.class)
     public ResponseEntity<Map<String, String>> handleConnectionFailed(TvConnectionException e) {
-        return error(HttpStatus.BAD_GATEWAY, e);
+        return error(HttpStatus.REQUEST_TIMEOUT, e);
     }
 
     @ExceptionHandler(NoActiveSessionException.class)

@@ -37,8 +37,8 @@ public class ApiController {
 
     @PostMapping("/v1/remote/connect/{tv_device_key}")
     public void connect(@PathVariable("tv_device_key") String deviceKey) {
+        logger.info("Received a connect API request for {}", deviceKey);
         sessionManager.setActiveRemote(deviceKey);
-        logger.info("Connecting to device {}", deviceKey);
     }
 
     @GetMapping("/v1/remote/{tv_device_key}/apps")

@@ -47,10 +47,10 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
-    void mapsConnectionFailureToBadGateway() {
+    void mapsConnectionFailureToRequestTimeout() {
         LogicalDevice device = new LogicalDevice("10.0.0.1", "MyDevice", Manufacturer.SAMSUNG, DeviceType.TV);
         assertThat(handler.handleConnectionFailed(new TvConnectionException(device)).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_GATEWAY);
+                .isEqualTo(HttpStatus.REQUEST_TIMEOUT);
     }
 
     @Test
