@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
@@ -135,6 +136,24 @@ class RemoteSessionManagerTest {
 
         verify((PersistentConnection) first).disconnect();
         verify((PersistentConnection) second, never()).disconnect();
+    }
+
+    @Test
+    void setActiveRemoteReturnsEarlyWhenDeviceAlreadyActive() {
+        Television tv = persistentTv();
+        when(((PersistentConnection) tv).connect()).thenReturn(true);
+        when(tv.host()).thenReturn(HOST);
+        when(deviceRegistry.getDevice(HOST)).thenReturn(tvDevice());
+        when(tvRemoteFactory.create(any())).thenReturn(tv);
+
+        sessionManager.setActiveRemote(HOST);
+        sessionManager.setActiveRemote(HOST); // already active for this host
+
+        // The second call short-circuits: no new controller is built and the
+        // existing connection is neither reconnected nor torn down.
+        verify(tvRemoteFactory, times(1)).create(any());
+        verify((PersistentConnection) tv, times(1)).connect();
+        verify((PersistentConnection) tv, never()).disconnect();
     }
 
     @Test
