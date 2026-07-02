@@ -38,6 +38,12 @@ public class RemoteSessionManager {
         if (device.deviceType() != DeviceType.TV) {
             throw new DeviceNotTelevisionException(device);
         }
+
+        // Early return if the requested device is already active
+        if (this.tv != null && device.host().equals(this.tv.host())) {
+            return;
+        }
+
         Television tvController = remoteFactory.create(device);
         // Only persistent-connection tvs need an explicit connection step
         if (tvController instanceof PersistentConnection pc && !pc.connect()) {
