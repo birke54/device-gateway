@@ -1,5 +1,6 @@
 package lan.citadel.device_gateway.device_discovery;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.jspecify.annotations.NonNull;
@@ -34,7 +35,7 @@ public class MdnsServiceDiscovery implements DeviceDiscovery, Closeable {
 
     private JmDNS jmdns;
 
-    public MdnsServiceDiscovery(DeviceRegistry deviceRegistry, DeviceNameStore nameStore) {
+    public MdnsServiceDiscovery(DeviceRegistry deviceRegistry, DeviceNameStore nameStore, MeterRegistry meterRegistry) {
         this.deviceRegistry = deviceRegistry;
         this.nameStore = nameStore;
     }

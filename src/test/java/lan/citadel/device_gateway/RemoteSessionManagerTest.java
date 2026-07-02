@@ -14,6 +14,7 @@ import lan.citadel.device_gateway.exceptions.TvConnectionException;
 import lan.citadel.device_gateway.exceptions.UnsupportedTvException;
 import lan.citadel.device_gateway.tvs.PersistentConnection;
 import lan.citadel.device_gateway.tvs.Television;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -36,13 +37,15 @@ class RemoteSessionManagerTest {
 
     private DeviceRegistry deviceRegistry;
     private TvRemoteFactory tvRemoteFactory;
+    private GatewayMetrics metrics;
     private RemoteSessionManager sessionManager;
 
     @BeforeEach
     void setUp() {
         deviceRegistry = mock(DeviceRegistry.class);
         tvRemoteFactory = mock(TvRemoteFactory.class);
-        sessionManager = new RemoteSessionManager(deviceRegistry, tvRemoteFactory);
+        metrics = new GatewayMetrics(new SimpleMeterRegistry());
+        sessionManager = new RemoteSessionManager(deviceRegistry, tvRemoteFactory, metrics);
     }
 
     private static LogicalDevice tvDevice() {
